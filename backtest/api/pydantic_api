@@ -1,0 +1,26 @@
+from pydantic import BaseModel, Field, conint, conlist
+from typing import List
+
+class TickerRecord(BaseModel):
+    """
+    搭配 /v1/getTicker
+    """
+
+    list_symbol: List[str]
+
+class OHLCVRecord(BaseModel):
+    """
+    搭配 /v1/getOHLCV OHLCV
+    """
+
+    symbol: str     # ticker
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: float
+
+# class MetricRecord(BaseModel):
+#     """
+#     搭配 /v1/getMetric
+#     """

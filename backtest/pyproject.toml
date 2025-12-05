@@ -1,0 +1,70 @@
+[project]
+name = "algolab"
+version = "0.1.0"
+description = "Backtesting + Data IO starter for trading research"
+readme = "docs/README.md"
+requires-python = ">=3.11"
+authors = [{ name = "You" }]
+
+dependencies = [
+  "backtrader>=1.9",
+  "pandas>=2.2",
+  "numpy>=1.26",
+  "matplotlib>=3.9",
+  "yfinance>=0.2",
+  "sqlalchemy>=2.0",
+  "psycopg2-binary>=2.9",
+  "pgvector>=0.3.1",
+  "influxdb-client>=1.45",
+  "python-dotenv>=1.0",
+  "jupyterlab>=4.2",
+  "datasets>=3.0",          # Hugging Face
+  "pyyaml>=6.0",
+  "rich>=13.7",
+  "typer>=0.12",
+  "ta>=0.11.0",               # 技術指標（選用）
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "pydantic>=2.7",
+  "pydantic-settings>=2.4",
+  "python-dateutil>=2.9",
+  "SQLAlchemy>=2.0",
+  "redis>=5.0",
+  "celery>=5.4",
+  "streamlit>=1.37",
+  "datasets>=4.2.0",
+  "transformers>=4.57.1",
+  "accelerate>=1.11.0",
+  "diffusers>=0.35.2",
+  "peft>=0.17.1",
+  "trl>=0.24.0",
+  "sentence-transformers>=5.1.2",
+  "tokenizer>=0.22.1",
+  "stable-baselines3>=2.7.0",
+  "unsloth"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pre-commit>=3.7",
+  "black>=24.8",
+  "ruff>=0.6",
+  "mypy>=1.11"
+]
+
+# 取代舊的 venv-managed / venv 設定
+[tool.uv]
+managed = true                 # 讓 uv 自管 Python（可選）
+python-preference = "managed"  # 優先用 uv 管理的 Python（可選）
+
+
+
+[tool.black]
+line-length = 100
+
+[tool.ruff]
+line-length = 100
+select = ["E","F","I"]
+
+[tool.mypy]
+ignore_missing_imports = true
