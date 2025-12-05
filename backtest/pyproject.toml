@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "Backtesting"
 readme = "README.md"
 requires-python = ">=3.11"
-authors = [{ name = "You" }]
+authors = [
+  { name = "Weiwei", email = "weiwei880411@gmail.com" }
+]
 
 dependencies = [
   "backtrader>=1.9",
