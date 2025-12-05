@@ -2,6 +2,8 @@
 .env
 *.log
 uv.lock
+../
+./
 
 # Python
 __pycache__/
