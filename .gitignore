@@ -1,0 +1,13 @@
+# File
+.env
+*.log
+
+# Python
+__pycache__/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
