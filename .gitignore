@@ -1,5 +1,4 @@
 # File
-.env
 *.log
 uv.lock
 ../
