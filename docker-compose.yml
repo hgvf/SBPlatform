@@ -1,0 +1,180 @@
+version: "3.11"
+
+x-env: &default-env
+  ENV_FILE: ./.env
+
+x-logging: &default-logging
+  options:
+    max-size: "10m"
+    max-file: "5"
+  driver: json-file
+
+volumes:
+  pg_data:          # for PostgreSQL
+  influx_data:      # for influxDB
+  cold_data:        # for OHLCV cold data
+  notebooks_data:   # for jupyter notebook
+  openbb_data:      # for OpenBB
+  news_data:        # for multimodal news-to-price algorithms
+  strategy_data:    # for DL-based strategy algorithm
+
+networks:           # connect to all services
+  sb-platform-net:
+    driver: bridge
+
+services:
+  # PostgreSQL
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: pgvector
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+    networks: [sb-platform-net]
+    logging: *default-logging
+
+  # PGAdmin
+  pgadmin:
+    image: dpage/pgadmin4:8
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+    ports:
+      - "${PGADMIN_PORT}:80"
+    networks: [sb-platform-net]
+    logging: *default-logging
+    depends_on: [postgres]
+
+  # InfluxDB
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb
+    restart: unless-stopped
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUX_USERNAME}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUX_PASSWORD}
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUX_ORG}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUX_BUCKET}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUX_TOKEN}
+
+      INFLUXD_STORAGE_CACHE_MAX_MEMORY_SIZE: 2147483648
+      INFLUXD_STORAGE_CACHE_SNAPSHOT_MEMORY_SIZE: 268435456
+      INFLUXD_STORAGE_WAL_FSYNC_DELAY: 1s
+      INFLUXD_STORAGE_MAX_CONCURRENT_COMPACTIONS: 1
+      INFLUXD_QUERY_MEMORY_BYTES: 2147483648
+      INFLUXD_QUERY_CONCURRENCY: 5
+    ports:
+      - "${INFLUXDB_UI_PORT}:8086"
+    volumes:
+      - influx_data:/var/lib/influxdb2
+      - cold_data:/cold_data
+    networks: [sb-platform-net]
+    logging: *default-logging
+    
+    # === 健康檢查（給足夠時間啟動）===
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 3000s  # 給 5 分鐘啟動時間（大量資料需要）
+
+  # algo_N2P
+  algo-news:
+    build:
+      context: ./algo_news
+      dockerfile: Dockerfile
+    image: algo-news:latest
+    container_name: algo_news
+    restart: unless-stopped
+    working_dir: /algo_news
+    env_file: .env
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "${ALGO_NEWS_PORT}:8000"
+    volumes:
+      - ./algo_news:/algo_news
+      - news_data:/algo_news/data
+    networks: [sb-platform-net]
+    logging: *default-logging
+    depends_on:
+      - postgres
+      - influxdb
+
+  # algo_Strategy
+  algo-strategy:
+    build:
+      context: ./algo_strategy
+      dockerfile: Dockerfile
+    image: algo-strategy:latest
+    container_name: algo_strategy
+    restart: unless-stopped
+    working_dir: /algo_strategy
+    env_file: .env
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "${ALGO_STRATEGY_PORT}:8000"
+    volumes:
+      - ./algo_strategy:/algo_strategy
+      - strategy_data:/algo_strategy/data
+    networks: [sb-platform-net]
+    logging: *default-logging
+    depends_on:
+      - postgres
+      - influxdb
+
+  # backtest
+  backtest:
+    build: 
+      context: ./backtest
+      dockerfile: Dockerfile
+    image: backtest:latest
+    container_name: backtest
+    restart: unless-stopped
+    working_dir: /backtest
+    env_file: .env
+    command: ["bash", "-lc", "uv sync && uv run jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root"]
+    ports:
+      - "${JUPYTER_PORT}:8888"
+      - "8501:8501"
+    volumes:
+      - ./backtest:/backtest
+      - cold_data:/backtest/.cold_data
+      - notebooks_data:/backtest/notebooks
+    networks: [sb-platform-net]
+    logging: *default-logging
+    depends_on:
+      - postgres
+      - influxdb
+      - algo-news
+      - algo-strategy
+      
+  # OpenBB
+  openbb:
+    build:
+      context: ./openbb
+      dockerfile: Dockerfile
+    image: openbb:latest
+    container_name: openbb
+    restart: unless-stopped
+    working_dir: /openbb
+    env_file: .env
+    command: ["openbb-api", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "${OPENBB_PORT}:8000"
+    volumes:
+      - ./openbb:/openbb
+      - openbb_data:/openbb/data
+    networks: [sb-platform-net]
+    logging: *default-logging
+    depends_on:
+      - backtest
