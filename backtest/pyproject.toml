@@ -1,8 +1,8 @@
 [project]
-name = "algolab"
+name = "backtest"
 version = "0.1.0"
-description = "Backtesting + Data IO starter for trading research"
-readme = "docs/README.md"
+description = "Backtesting"
+readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "You" }]
 
@@ -56,8 +56,6 @@ dev = [
 [tool.uv]
 managed = true                 # 讓 uv 自管 Python（可選）
 python-preference = "managed"  # 優先用 uv 管理的 Python（可選）
-
-
 
 [tool.black]
 line-length = 100
